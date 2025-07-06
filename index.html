@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Interactive Value Stream Map</title>
+
+<style>
+/* Space Background */
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+    box-sizing: border-box;
+    overflow: hidden;
+    background: #000 url('https://images.unsplash.com/photo-1462331940025-496dfbfc7564?ixlib=rb-4.0.3&auto=format&fit=crop&w=2048&q=80') center center/cover no-repeat fixed;
+    color: #fff;
+}
+
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: 
+        radial-gradient(1px 1px at 25% 30%, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0)),
+        radial-gradient(1px 1px at 50% 12%, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0)),
+        radial-gradient(1.5px 1.5px at 15% 20%, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0)),
+        radial-gradient(2px 2px at 35% 60%, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0)),
+        radial-gradient(2.5px 2.5px at 65% 25%, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0)),
+        radial-gradient(1.5px 1.5px at 75% 70%, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0)),
+        radial-gradient(2px 2px at 90% 40%, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0)),
+        radial-gradient(2.5px 2.5px at 5% 80%, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0));
+    z-index: -1;
+}
+
+/* Spacecraft Viewport */
+.viewport-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 100vh;
+    position: relative;
+}
+
+.spacecraft-viewport {
+    width: 95%;
+    height: 95%;
+    border: 20px solid #2a3b4c;
+    border-radius: 15px;
+    box-shadow: 
+        inset 0 0 30px rgba(0, 150, 255, 0.5),
+        0 0 50px rgba(0, 150, 255, 0.3);
+    position: relative;
+    overflow: auto;
+    background: rgba(0, 0, 0, 0.4);
+    padding: 15px;
+}
+
+.spacecraft-viewport::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border: 2px solid rgba(0, 200, 255, 0.3);
+    border-radius: 8px;
+    pointer-events: none;
+    z-index: 10;
+}
+
+.spacecraft-viewport::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: 
+        linear-gradient(90deg, rgba(0, 150, 255, 0.15) 1px, transparent 1px) 0 0 / 20px 20px,
+        linear-gradient(0deg, rgba(0, 150, 255, 0.15) 1px, transparent 1px) 0 0 / 20px 20px;
+    pointer-events: none;
+    z-index: 5;
+    opacity: 0.3;
+}
+
+/* Rivets on spacecraft border */
+.rivet {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background: #596673;
+    border-radius: 50%;
+    box-shadow: inset 0 0 3px rgba(0, 0, 0, 0.8);
+}
+
+.rivet-top-left { top: 5px; left: 5px; }
+.rivet-top-right { top: 5px; right: 5px; }
+.rivet-bottom-left { bottom: 5px; left: 5px; }
+.rivet-bottom-right { bottom: 5px; right: 5px; }
+
+.container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    padding: 10px;
+    box-sizing: border-box;
+}
+
+/* General Flex Styling for Containers */
+.parent-container, .child-container, .subchild-container, .component-container {
+    display: flex;
+    justify-content: space-evenly;
+    width: 100%;
+    margin: 10px 0;
+    flex-wrap: wrap; /* Allows wrapping of items */
+}
+
+/* Styling for individual items (parent, child, subchild, component) */
+.parent, .child, .subchild, .component {
+    background: rgba(11, 22, 44, 0.8);
+    border: 2px solid rgba(0, 180, 255, 0.6);
+    border-radius: 8px;
+    padding: 10px;
+    margin: 5px;
+    cursor: pointer;
+    text-align: center;
+    transition: background 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
+    flex: 1 1 21%; /* Adjust to take up 21% of the width, but flexible */
+    box-sizing: border-box;
+}
+
+/* Hover effect for items */
+.parent:hover, .child:hover, .subchild:hover, .component:hover {
+    background: rgba(16, 33, 66, 0.9);
+    border-color: rgba(0, 220, 255, 0.9);
+    box-shadow: 0 0 20px rgba(0, 220, 255, 0.4);
+    transform: translateY(-2px);
+}
+
+/* Green and Red Glow Effects */
+.green-glow {
+    box-shadow: 0 0 20px 5px rgba(0, 255, 128, 0.7);
+    border-color: rgba(0, 255, 128, 0.9);
+    transform: scale(1.05);
+}
+
+.red-glow {
+    box-shadow: 0 0 20px 5px rgba(255, 0, 64, 0.7);
+    border-color: rgba(255, 0, 64, 0.9);
+    transform: scale(1.05);
+}
+
+/* Optimization Information Styling */
+.optimization-info {
+    background: rgba(11, 25, 55, 0.7);
+    padding: 30px;
+    border-radius: 10px;
+    margin-top: 20px;
+    width: 100%;
+    max-width: 600px;
+    box-sizing: border-box;
+    border: 1px solid rgba(0, 180, 255, 0.4);
+    box-shadow: 0 0 30px rgba(0, 180, 255, 0.2);
+}
+
+.optimization-info h3 {
+    text-align: center;
+    font-size: 1.5em;
+    font-weight: bold;
+    text-shadow: 0 0 10px rgba(0, 200, 255, 0.7);
+    color: #7fdbff;
+}
+
+#optimization-details {
+    text-align: center;
+    padding: 20px;
+    font-size: 1.2em;
+    font-weight: bold;
+    color: #fff;
+    text-shadow: 0 0 8px rgba(0, 200, 255, 0.6);
+    background: rgba(11, 22, 44, 0.8);
+    border-radius: 8px;
+    border: 1px solid rgba(0, 180, 255, 0.4);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+    transition: all 0.3s ease;
+}
+
+#optimization-details:hover {
+    background: rgba(11, 22, 44, 0.9);
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.7);
+    transform: scale(1.05);
+}
+
+/* Mobile-Friendly Adjustments */
+@media (max-width: 600px) {
+    .parent, .child, .subchild, .component {
+        flex: 1 1 48%; /* Items will take up nearly half of the width */
+    }
+}
+
+@media (max-width: 400px) {
+    .parent, .child, .subchild, .component {
+        flex: 1 1 98%; /* Items take up almost the entire width */
+    }
+}
+
+.reward-message {
+    color: #00FF00;
+    font-size: 1.5em;
+    font-weight: bold;
+    margin-top: 20px;
+    text-align: center;
+    display: none;
+    text-shadow: 0 0 15px rgba(0, 255, 0, 0.8);
+}
+
+</style>
+</head>
+<body>
+<div class="viewport-container">
+    <div class="spacecraft-viewport">
+        <!-- Rivets for spacecraft aesthetic -->
+        <div class="rivet rivet-top-left"></div>
+        <div class="rivet rivet-top-right"></div>
+        <div class="rivet rivet-bottom-left"></div>
+        <div class="rivet rivet-bottom-right"></div>
+        
+        <div class="container">
+            <!-- Core Parent Models -->
+            <div class="parent-container">
+                <div class="parent" id="MFG">Manufacturing (MFG)</div>
+                <div class="parent" id="MRP">Materials Requirements Planning (MRP)</div>
+                <div class="parent" id="OTC">Order to Cash (OTC)</div>
+                <div class="parent" id="FICO">Finance and Controlling (FICO)</div>
+            </div>
+
+            <!-- Child Models -->
+            <div class="child-container">
+                <div class="child" id="LeanMFG">Lean Manufacturing</div>
+                <div class="child" id="PredictiveMaintenance">Predictive Maintenance</div>
+                <div class="child" id="ProductionPlanning">Production Planning</div>
+                <div class="child" id="SupplyChain">Supply Chain Optimization</div>
+                <div class="child" id="DemandForecasting">Demand Forecasting</div>
+                <div class="child" id="OrderMgmt">Order Management System</div>
+                <div class="child" id="CRM">Customer Relationship Management</div>
+                <div class="child" id="InvoiceMgmt">Invoice Management</div>
+                <div class="child" id="FinancialReporting">Automated Financial Reporting</div>
+                <div class="child" id="CostControl">Cost Control</div>
+                <div class="child" id="Kaizen">Kaizen (Continuous Improvement)</div>
+                <div class="child" id="Kanban">Kanban for Flow Optimization</div>
+                <div class="child" id="5S">5S for Workplace Organization</div>
+                <div class="child" id="JIT">Just-In-Time (JIT)</div>
+                <div class="child" id="PredictiveAnalytics">Predictive Analytics for Finance</div>
+                <div class="child" id="AIChatbots">AI Chatbots</div>
+                <div class="child" id="RealTimeInventory">Real-Time Inventory Visibility</div>
+                <div class="child" id="AutomatedOrderEntry">Automated Order Entry</div>
+                <div class="child" id="RoboticProcessAutomation">Robotic Process Automation</div>
+                <div class="child" id="Blockchain">Blockchain for Transparency</div>
+                <div class="child" id="CloudComputing">Cloud Computing</div>
+                <div class="child" id="BigData">Big Data Analytics</div>
+            </div>
+
+            <!-- Subchild Models -->
+            <div class="subchild-container">
+                <!-- Can add more subchild models if necessary -->
+            </div>
+
+            <!-- Component Models -->
+            <div class="component-container">
+                <!-- Can add more components if necessary -->
+            </div>
+
+            <!-- Optimization Dashboard -->
+            <div class="optimization-info">
+                <h3>Optimization Information</h3>
+                <div id="optimization-details">Select a model to view details</div>
+            </div>
+
+            <!-- Reward Message -->
+            <div class="reward-message" id="reward-message">
+                Congratulations! You've optimized the value stream! Enjoy a free 1-hour consultation with us.
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// JavaScript code for interactivity
+
+function displayOptimizationInfo(info) {
+    document.getElementById("optimization-details").innerText = info;
+}
+
+function updateParentGlow(parentId, isGreen) {
+    let parentElement = document.getElementById(parentId);
+    if (isGreen) {
+        parentElement.classList.add("green-glow");
+        parentElement.classList.remove("red-glow");
+    } else {
+        parentElement.classList.add("red-glow");
+        parentElement.classList.remove("green-glow");
+    }
+}
+
+function checkAllParentsGreen() {
+    const parents = ["MFG", "MRP", "OTC", "FICO"];
+    const allGreen = parents.every(parent => document.getElementById(parent).classList.contains("green-glow"));
+    if (allGreen) {
+        document.getElementById("reward-message").style.display = "block";
+    }
+}
+
+// Child Models Event Listeners
+document.getElementById("LeanMFG").addEventListener("click", function() {
+    displayOptimizationInfo("Lean Manufacturing: Eliminate waste, improve flow.");
+    updateParentGlow("MFG", true);
+    updateParentGlow("FICO", false);
+    checkAllParentsGreen();
+});
+
+document.getElementById("PredictiveMaintenance").addEventListener("click", function() {
+    displayOptimizationInfo("Predictive Maintenance: Anticipate and resolve equipment failures.");
+    updateParentGlow("MFG", true);
+    checkAllParentsGreen();
+});
+
+document.getElementById("ProductionPlanning").addEventListener("click", function() {
+    displayOptimizationInfo("Production Planning: Efficient scheduling of resources.");
+    updateParentGlow("MFG", true);
+    checkAllParentsGreen();
+});
+
+document.getElementById("SupplyChain").addEventListener("click", function() {
+    displayOptimizationInfo("Supply Chain Optimization: Improve overall logistics and reduce costs.");
+    updateParentGlow("MFG", true);
+    checkAllParentsGreen();
+});
+
+document.getElementById("DemandForecasting").addEventListener("click", function() {
+    displayOptimizationInfo("Demand Forecasting: Accurate demand predictions to avoid overproduction.");
+    updateParentGlow("MRP", true);
+    checkAllParentsGreen();
+});
+
+document.getElementById("OrderMgmt").addEventListener("click", function() {
+    displayOptimizationInfo("Order Management: Streamline customer orders and processing.");
+    updateParentGlow("OTC", true);
+    checkAllParentsGreen();
+});
+
+document.getElementById("CRM").addEventListener("click", function() {
+    displayOptimizationInfo("CRM: Improve customer interactions and relationships.");
+    updateParentGlow("OTC", true);
+    checkAllParentsGreen();
+});
+
+document.getElementById("InvoiceMgmt").addEventListener("click", function() {
+    displayOptimizationInfo("Invoice Management: Streamline invoicing and payment processes.");
+    updateParentGlow("FICO", true);
+    checkAllParentsGreen();
+});
+
+document.getElementById("FinancialReporting").addEventListener("click", function() {
+    displayOptimizationInfo("Automated Financial Reporting: Enhance financial visibility and decision-making.");
+    updateParentGlow("FICO", true);
+    checkAllParentsGreen();
+});
+
+document.getElementById("CostControl").addEventListener("click", function() {
+    displayOptimizationInfo("Cost Control: Maintain financial discipline through rigorous cost monitoring.");
+    updateParentGlow("FICO", true);
+    checkAllParentsGreen();
+});
+
+document.getElementById("Kaizen").addEventListener("click", function() {
+    displayOptimizationInfo("Kaizen: Implement continuous improvements in all processes.");
+    updateParentGlow("MFG", true);
+    checkAllParentsGreen();
+});
+
+document.getElementById("Kanban").addEventListener("click", function() {
+    displayOptimizationInfo("Kanban: Optimize production flow and inventory levels.");
+    updateParentGlow("MFG", true);
+    checkAllParentsGreen();
+});
+
+document.getElementById("5S").addEventListener("click", function() {
+    displayOptimizationInfo("5S: Organize and standardize workplace to improve efficiency.");
+    updateParentGlow("MFG", true);
+    checkAllParentsGreen();
+});
+
+document.getElementById("JIT").addEventListener("click", function() {
+    displayOptimizationInfo("Just-In-Time (JIT): Reduce inventory costs by aligning production with demand.");
+    updateParentGlow("MFG", true);
+    checkAllParentsGreen();
+});
+
+document.getElementById("PredictiveAnalytics").addEventListener("click", function() {
+    displayOptimizationInfo("Predictive Analytics: Use data-driven insights to predict trends.");
+    updateParentGlow("FICO", true);
+    checkAllParentsGreen();
+});
+
+document.getElementById("AIChatbots").addEventListener("click", function() {
+    displayOptimizationInfo("AI Chatbots: Automate customer service and interaction.");
+    updateParentGlow("OTC", true);
+    checkAllParentsGreen();
+});
+
+document.getElementById("RealTimeInventory").addEventListener("click", function() {
+    displayOptimizationInfo("Real-Time Inventory Visibility: Improve inventory management and reduce waste.");
+    updateParentGlow("MFG", true);
+    checkAllParentsGreen();
+});
+
+document.getElementById("AutomatedOrderEntry").addEventListener("click", function() {
+    displayOptimizationInfo("Automated Order Entry: Streamline order processing and reduce human error.");
+    updateParentGlow("OTC", true);
+    checkAllParentsGreen();
+});
+
+document.getElementById("RoboticProcessAutomation").addEventListener("click", function() {
+    displayOptimizationInfo("Robotic Process Automation: Automate repetitive administrative tasks.");
+    updateParentGlow("FICO", true);
+    checkAllParentsGreen();
+});
+
+document.getElementById("Blockchain").addEventListener("click", function() {
+    displayOptimizationInfo("Blockchain: Improve supply chain transparency and security.");
+    updateParentGlow("MFG", true);
+    checkAllParentsGreen();
+});
+
+document.getElementById("CloudComputing").addEventListener("click", function() {
+    displayOptimizationInfo("Cloud Computing: Improve scalability and collaboration across systems.");
+    updateParentGlow("MRP", true);
+    checkAllParentsGreen();
+});
+
+document.getElementById("BigData").addEventListener("click", function() {
+    displayOptimizationInfo("Big Data Analytics: Use massive data sets for actionable insights.");
+    updateParentGlow("FICO", true);
+    checkAllParentsGreen();
+});
+</script>
+</body>
+</html>
